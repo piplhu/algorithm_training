@@ -1,6 +1,9 @@
-#pragma once
+#ifndef _H_SUMGETINDEX_H_
+#define _H_SUMGETINDEX_H_
+
 #include <vector>
 #include <algorithm>
+#include <limits.h>
 using namespace std;
 
 //求数组中2个数和为sum的索引
@@ -152,4 +155,4 @@ static double findMedianSortedArraysEx3(vector<int>& nums1, vector<int>& nums2) 
 	}
 	return (max(LMax1, LMax2) + min(RMin1, RMin2)) / 2.0;
 }
-
+#endif //_H_SUMGETINDEX_H_
