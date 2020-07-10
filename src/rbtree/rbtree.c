@@ -29,31 +29,41 @@ void init_rbtree(rbtree** t,rbtree_node* nil){
 }
 
 void insert_node(rbtree* t, KEY key, uint32_t value){
-    if(t->root == t->nil){
-        t->root = create_red_node(key,value,t->nil);
-        return;
-    }
-
-    rbtree_node* nil = t->nil;
+    
+    rbtree_node* p = t->nil;
     rbtree_node* x = t->root;
-    while (x != nil){
-        if(x->key > key){
+    while (x != t->nil){
+        p = x;
+        if(x->key < key){
             x = x->right;
-        }else if(x->key < key){
+        }else if(x->key > key){
             x = x->left;
         }else{ //==
             return;
         }
     }
-    x = create_red_node(key,value,nil);
+    x = create_red_node(key,value,t->nil);
+    if(p == t->nil){
+        t->root = x;
+        return;
+    }
+
+    x->parent = p;
+    if(p->key > key){
+        p->left = x;
+    }else{
+        p->right = x;
+    }
     
     
 }
 
 void print_node(rbtree_node* node,rbtree_node* nil){
-    if(node != nil)
-        printf("key = %d; color = %s",node->key,node->color == RED ? "RED" : "BLACK");
+    if(node == nil)
+        return;
+    
     print_node(node->left,nil);
+    printf("key = %d; value = %d; color = %s \n",node->key, node->value, node->color == RED ? "RED" : "BLACK");
     print_node(node->right,nil);
 }
 
