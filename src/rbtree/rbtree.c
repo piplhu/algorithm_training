@@ -1,6 +1,26 @@
+/**
+ * @file rbtree.c
+ * @author pipl (huhui@hupipl.cn)
+ * @brief 
+ * @version 0.1
+ * @date 2020-07-10
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
+
 #include "rbtree.h"
 #include "stdio.h"
 
+/**
+ * @brief Create a node object
+ * 
+ * @param key  
+ * @param value 
+ * @param color 
+ * @param nil   :哨兵
+ * @return rbtree_node* 
+ */
 rbtree_node* create_node(KEY key,int32_t value,char color,rbtree_node* nil){
     rbtree_node* node = (rbtree_node*)malloc(sizeof(rbtree_node));
     node->color = color;
@@ -27,6 +47,30 @@ void init_rbtree(rbtree** t,rbtree_node* nil){
     tmp->root = nil;
     tmp->nil = nil;
 }
+
+/**
+ * @brief 节点左旋
+ * 
+ * @param root 父节点
+ * @param nil   哨兵
+ * @param node  要旋转的节点
+ */
+void rbtree_left_rotate(rbtree_node **root, rbtree_node *nil,
+                        rbtree_node *node) {
+
+}
+
+/**
+ * @brief 节点右旋
+ * 
+ * @param root 父节点
+ * @param nil  哨兵
+ * @param node 要旋转的节点
+ */
+void rbtree_right_rotate(rbtree_node **root, rbtree_node *nil,
+                         rbtree_node *node) {
+}
+
 
 void insert_node(rbtree* t, KEY key, uint32_t value){
     
@@ -57,6 +101,8 @@ void insert_node(rbtree* t, KEY key, uint32_t value){
     
     
 }
+
+
 
 void print_node(rbtree_node* node,rbtree_node* nil){
     if(node == nil)
