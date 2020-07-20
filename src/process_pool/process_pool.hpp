@@ -122,20 +122,21 @@ template <typename T, int Num, int FD> class ProcessPool {
     ProcessPool(int listenfd, int process_num);
 
   public:
-    static ProcessPool<T, Num, FD> *GetInstance() {
+    static ProcessPool<T, Num, FD> *GetInstance(int fd) {
         if (!instance_) {
-            instance_ = new ProcessPool<T, Num, FD>(Num, FD);
+            instance_ = new ProcessPool<T, Num, FD>(fd, Num);
         }
         return instance_;
     }
 
-    ~ProcessPool();
+    ~ProcessPool(){};
     /**
      * @brief 启动进程池
      *
      */
     void Run();
 
+    
   private:
     /**
      * @brief 统一事件源
@@ -159,7 +160,7 @@ template <typename T, int Num, int FD> class ProcessPool {
     static ProcessPool<T, Num, FD> *instance_;
 
     static const int MAX_PROCESS_NUMBER = 16; //进程允许的最大子进程数
-    static const int USE_PER_PROCESS = 65536; //每个子进程最多能处理的客户数量
+    static const int USE_PER_PROCESS = 10; //每个子进程最多能处理的客户数量
     static const int MAX_EVENT_NUMBER = 1000; // epoll最多处理的客户数量
     int              process_num_;            //进程池中的进程总数
     int              index_ = -1;             //子进程在池中的序号
@@ -214,7 +215,16 @@ void ProcessPool<T, Num, FD>::SetupSigPipe() {
 }
 
 template <typename T, int Num, int FD> 
-void ProcessPool<T, Num, FD>::Run() {
+void ProcessPool<T, Num, FD>::Run(){
+    if(index_ != -1){
+        RunChild();
+        return;
+    }
+    RunParent();
+}
+
+template <typename T, int Num, int FD> 
+void ProcessPool<T, Num, FD>::RunChild() {
     SetupSigPipe();
 
     int pipefd = sub_processs_[index_].pipefd[1];
