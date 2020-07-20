@@ -33,7 +33,7 @@ class CGIConn {
               Removefd(epollfd_,sockfd_);
             
             break;
-        }else if(ret =0 ){
+        }else if(ret == 0 ){
           Removefd(epollfd_,sockfd_);
           break;
         }else{
