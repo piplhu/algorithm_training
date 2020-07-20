@@ -160,7 +160,7 @@ template <typename T, int Num, int FD> class ProcessPool {
     static ProcessPool<T, Num, FD> *instance_;
 
     static const int MAX_PROCESS_NUMBER = 16; //进程允许的最大子进程数
-    static const int USE_PER_PROCESS = 10; //每个子进程最多能处理的客户数量
+    static const int USE_PER_PROCESS = 65536; //每个子进程最多能处理的客户数量
     static const int MAX_EVENT_NUMBER = 1000; // epoll最多处理的客户数量
     int              process_num_;            //进程池中的进程总数
     int              index_ = -1;             //子进程在池中的序号
@@ -359,11 +359,11 @@ void ProcessPool<T, Num, FD>::RunParent() {
                             int   stat;
                             while ((pid = waitpid(-1, &stat, WNOHANG)) > 0) {
                                 for (int j = 0; j < process_num_; i++) {
-                                    if (sub_processs_[j].pid_ = pid) {
-                                        std::cout << "child join :" << i
+                                    if (sub_processs_[j].pid_ == pid) {
+                                        std::cout << "child join :" << j
                                                   << std::endl;
-                                        close(sub_processs_[i].pipefd[0]);
-                                        sub_processs_[i].pid_ = -1;
+                                        close(sub_processs_[j].pipefd[0]);
+                                        sub_processs_[j].pid_ = -1;
                                     }
                                 }
                             }
