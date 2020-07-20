@@ -68,10 +68,15 @@ class CGIConn {
             Removefd(epollfd_,sockfd_);
             break;
           }else{
+            std::cout << "exec CGI" << std::endl;
             //子进程将标准输出定向到sockfd_，并执行CGI
             close(STDOUT_FILENO);
-            dup(sockfd_);
-            execl(recv_buf_,recv_buf_,0);
+            dup2(sockfd_,STDOUT_FILENO);
+
+            //回显
+            send(sockfd_,recv_buf_,BUFFR_SIZE,0);
+            //execl("/bin/ls","ls", "-al", "/etc/passwd", (char *)0);
+            execl(recv_buf_,recv_buf_,(char*)0);
             exit(0);
           }
         }
