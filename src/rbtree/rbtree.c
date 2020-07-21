@@ -41,11 +41,12 @@ rbtree_node* create_red_node(KEY key,int32_t value,rbtree_node* nil){
     return create_node(key, value, RED, nil);
 }
 
-void init_rbtree(rbtree** t,rbtree_node* nil){
-    *t = (rbtree*)malloc(sizeof(rbtree));
-    rbtree* tmp = *t;
-    tmp->root = nil;
-    tmp->nil = nil;
+void init_rbtree(rbtree **t) {
+    *t              = (rbtree *)malloc(sizeof(rbtree));
+    rbtree *tmp     = *t;
+    tmp->nil        = (rbtree_node *)malloc(sizeof(rbtree_node));
+    tmp->nil->color = BLACK;
+    tmp->root       = tmp->nil;
 }
 
 /**
@@ -57,7 +58,22 @@ void init_rbtree(rbtree** t,rbtree_node* nil){
  */
 void rbtree_left_rotate(rbtree_node **root, rbtree_node *nil,
                         rbtree_node *node) {
+    rbtree_node *right = node->right;
+    node->right        = right->left;
+    if (right->left != nil) right->left->parent = node;
 
+    right->parent = node->parent;
+
+    if (node->parent == nil) {
+        (*root) = right;
+    } else if (node == node->parent->left) {
+        node->parent->left = right;
+    } else {
+        node->parent->right = right;
+    }
+
+    right->left  = node;
+    node->parent = right;
 }
 
 /**
@@ -69,8 +85,147 @@ void rbtree_left_rotate(rbtree_node **root, rbtree_node *nil,
  */
 void rbtree_right_rotate(rbtree_node **root, rbtree_node *nil,
                          rbtree_node *node) {
+    rbtree_node *left = node->left; //要旋转节点的左节点
+    node->left = left->right; //将左节点的右子节点给要旋转的节点的左节点
+    if (left->right != nil) //将左节点的右子节点的父指向要旋转的节点
+        left->right->parent = node;
+
+    left->parent = node->parent; //左节点的父节点变成旋转节点的父节点
+
+    //更新旋转节点的父节点
+    if (node->parent == nil) { //旋转节点是ROOT
+        (*root) = left;
+    } else if (node == node->parent->right) { //要旋转的节点的是父节点的右节点
+        node->parent->right = left;
+    } else { //要旋转的节点的是父节点的右节点
+        node->parent->left = left;
+    }
+    left->right  = node;
+    node->parent = left;
 }
 
+/**
+ * @brief 删除自平衡
+ * 
+ * @param root 
+ * @param nil 
+ * @param node 插入的子节点
+ */
+void rbtree_delete_fixup(rbtree_node **root, rbtree_node *nil,
+                         rbtree_node *node) {
+    while (node != *root && node->color == BLACK) {
+        if (node == node->parent->left) { //要插入的节点是父节点的左节点
+            rbtree_node *right_br = node->parent->right; //右兄弟
+            if (right_br->color == RED) {
+                right_br->color     = BLACK;
+                node->parent->color = RED;
+
+                rbtree_left_rotate(root, nil, node->parent);
+                right_br = node->parent->right;
+            }
+
+            if (right_br->left->color == BLACK &&
+                right_br->right->color == BLACK) {
+                right_br->color = RED;
+                node            = node->parent;
+            } else {
+                if (right_br->right->color == BLACK) {
+                    right_br->left->color = BLACK;
+                    right_br->color       = RED;
+                    rbtree_right_rotate(root, nil, right_br);
+                    right_br = node->parent->right;
+                }
+
+                right_br->color        = node->parent->color;
+                node->parent->color    = BLACK;
+                right_br->right->color = BLACK;
+                rbtree_left_rotate(root, nil, node->parent);
+            }
+        } else {
+            rbtree_node *left_rb = node->parent->left;
+            if (left_rb->color == RED) {
+                left_rb->color      = BLACK;
+                node->parent->color = RED;
+                rbtree_right_rotate(root, nil, node->parent);
+                left_rb = node->parent->left;
+            }
+
+            if (left_rb->left->color == BLACK &&
+                left_rb->right->color == BLACK) {
+                left_rb->color = RED;
+                node           = node->parent;
+            } else {
+                if (left_rb->left->color == BLACK) {
+                    left_rb->right->color = BLACK;
+                    left_rb->color        = RED;
+                    rbtree_left_rotate(root, nil, left_rb);
+                    left_rb = node->parent->left;
+                }
+
+                left_rb->color       = node->parent->color;
+                node->parent->color  = BLACK;
+                left_rb->left->color = BLACK;
+                rbtree_right_rotate(root, nil, node->parent);
+
+                node = *root;
+            }
+        }
+    }
+    node->color = BLACK;
+}
+
+/**
+ * @brief 插入自平衡
+ * 
+ * @param root 
+ * @param nil 
+ * @param node 
+ */
+void rbtree_insert_fixup(rbtree_node **root, rbtree_node *nil,
+                         rbtree_node *node) {
+    while (node->parent->color == RED) {
+        if (node->parent == node->parent->parent->left) {
+            rbtree_node *right_uncle = node->parent->parent->right;
+            if (right_uncle->color == RED) {
+                node->parent->color         = BLACK;
+                right_uncle->color          = BLACK;
+                node->parent->parent->color = RED;
+
+                node = node->parent->parent;
+            } else {
+
+                if (node == node->parent->right) {
+                    node = node->parent;
+                    rbtree_left_rotate(root, nil, node);
+                }
+
+                node->parent->color         = BLACK;
+                node->parent->parent->color = RED;
+                rbtree_right_rotate(root, nil, node->parent->parent);
+            }
+        } else {
+            rbtree_node *left_uncle = node->parent->parent->left;
+            if (left_uncle->color == RED) {
+                node->parent->color         = BLACK;
+                left_uncle->color           = BLACK;
+                node->parent->parent->color = RED;
+
+                node = node->parent->parent;
+            } else {
+                if (node == node->parent->left) {
+                    node = node->parent;
+                    rbtree_right_rotate(root, nil, node);
+                }
+
+                node->parent->color         = BLACK;
+                node->parent->parent->color = RED;
+                rbtree_left_rotate(root, nil, node->parent->parent);
+            }
+        }
+    }
+
+    (*root)->color = BLACK;
+}
 
 void insert_node(rbtree* t, KEY key, uint32_t value){
     
@@ -86,20 +241,18 @@ void insert_node(rbtree* t, KEY key, uint32_t value){
             return;
         }
     }
-    x = create_red_node(key,value,t->nil);
-    if(p == t->nil){
-        t->root = x;
-        return;
-    }
+    rbtree_node* node = create_red_node(key,value,t->nil);
 
-    x->parent = p;
-    if(p->key > key){
-        p->left = x;
+    node->parent = p;
+    if(p == t->nil){
+        t->root = node;
+    }else if(p->key > key){
+        p->left = node;
     }else{
-        p->right = x;
+        p->right = node;
     }
     
-    
+    rbtree_insert_fixup(&(t->root),t->nil,node);
 }
 
 

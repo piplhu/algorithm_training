@@ -1,18 +1,18 @@
 #include "rbtree.h"
 
+
+
 int main(){
 
+    int array[20]={24,25,13,35,23, 26,67,47,38,98, 20,19,17,49,12, 21,9,18,14,15};
     //init
-    rbtree_node* nil = (rbtree_node*)malloc(sizeof(nil));
-    nil->color = BLACK;
     rbtree* t = NULL;
-    init_rbtree(&t,nil);
+    init_rbtree(&t);
 
     //
-    insert_node(t,10,20);
-    insert_node(t,11,20);
-    insert_node(t,9,20);
-    insert_node(t,1,20);
+    for(int i =0 ; i< 20 ;i++){
+        insert_node(t,array[i],20);
+    }
     rbtree_print(t);
     return 0;
 }

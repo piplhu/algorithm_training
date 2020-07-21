@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define RED 0
-#define BLACK 1
+#define RED 1
+#define BLACK 2
 
 typedef unsigned int        KEY;
 typedef struct _rbtree_node rbtree_node;
@@ -26,7 +26,26 @@ struct _rbtree {
     rbtree_node* nil;
 };
 
-void init_rbtree(rbtree** t,rbtree_node* nil);
+/**
+ * @brief 初始化树，内部会为t分配空间
+ * 
+ * @param t 
+ */
+void init_rbtree(rbtree** t);
+
+/**
+ * @brief 插入节点
+ * 
+ * @param t 
+ * @param key 
+ * @param value 
+ */
 void insert_node(rbtree* t, KEY key, uint32_t value);
+
+/**
+ * @brief 中序遍历打印
+ * 
+ * @param t 
+ */
 void rbtree_print(rbtree* t);
 #endif //_H_RBTREE_H_
