@@ -381,6 +381,7 @@ void ProcessPool<T, Num, FD>::RunParent() {
                                 int pid = sub_processs_[i].pid_;
                                 if (pid != -1) kill(pid, SIGTERM);
                             }
+                            stop_ = true;
                             break;
                         }
                         }
