@@ -113,7 +113,7 @@ void rbtree_right_rotate(rbtree_node **root, rbtree_node *nil,
  */
 void rbtree_delete_fixup(rbtree_node **root, rbtree_node *nil,
                          rbtree_node *node) {
-    while (node != *root && node->color == BLACK) {
+    while (node != (*root) && node->color == BLACK) {
         if (node == node->parent->left) { //要插入的节点是父节点的左节点
             rbtree_node *right_br = node->parent->right; //右兄弟
             if (right_br->color == RED) {
@@ -140,6 +140,8 @@ void rbtree_delete_fixup(rbtree_node **root, rbtree_node *nil,
                 node->parent->color    = BLACK;
                 right_br->right->color = BLACK;
                 rbtree_left_rotate(root, nil, node->parent);
+
+                node = *root;
             }
         } else {
             rbtree_node *left_rb = node->parent->left;
@@ -192,7 +194,7 @@ void rbtree_insert_fixup(rbtree_node **root, rbtree_node *nil,
                 node->parent->parent->color = RED;
 
                 node = node->parent->parent;
-            } else {
+            } else { //没有叔父节点
 
                 if (node == node->parent->right) {
                     node = node->parent;
@@ -255,7 +257,109 @@ void insert_node(rbtree* t, KEY key, uint32_t value){
     rbtree_insert_fixup(&(t->root),t->nil,node);
 }
 
+/**
+ * @brief 找node节点下的最小节点
+ * 
+ * @param nil 
+ * @param node 
+ * @return rbtree_node* 
+ */
+rbtree_node *rbtree_mini(rbtree_node *nil, rbtree_node *node) {
+    while (node->left != nil)
+        node = node->left;
 
+    return node;
+}
+
+/**
+ * @brief 找node节点下的最大节点
+ * 
+ * @param nil 
+ * @param node 
+ * @return rbtree_node* 
+ */
+rbtree_node *rbtree_maxi(rbtree_node *nil, rbtree_node *node) {
+    while (node->right != nil)
+        node = node->right;
+
+    return node;
+}
+
+/**
+ * @brief 找node节点的后继节点
+ * 
+ * @param nil 
+ * @param node 
+ * @return rbtree_node* 
+ */
+rbtree_node *rbtree_successor(rbtree_node *nil, rbtree_node *node) {
+    rbtree_node *tmp = node->parent;
+
+    if (node->right != nil) { // 向下
+        return rbtree_mini(nil, node->right);
+    }
+
+    while (tmp != nil && node != tmp->right) {//向上
+        node = tmp;
+        tmp  = tmp->parent;
+    }
+
+    return tmp;
+}
+
+rbtree_node *rbtree_search(rbtree *t, KEY key) {
+    rbtree_node *node = t->root;
+    while (node != t->nil) {
+        if (node->key < key) {
+            node = node->right;
+        } else if (node->key > key) {
+            node = node->left;
+        } else {
+            return node;
+        }
+    }
+    return t->nil;
+}
+
+
+rbtree_node *delete_node(rbtree *t, KEY key) {
+    rbtree_node *node = rbtree_search(t, key);
+
+    rbtree_node *x = t->nil;
+    rbtree_node *y = t->nil;
+
+    if (node->left == t->nil || node->right == t->nil) {
+        y = node;
+    } else {
+        y = rbtree_successor(t->nil, node);
+    }
+
+    if (y->left != t->nil) {
+        x = y->left;
+    } else if (y->right != t->nil) {
+        x = y->right;
+    }
+
+    x->parent = y->parent;
+    if (y->parent == t->nil) {
+        t->root = x;
+    } else if (y == y->parent->left) {
+        y->parent->left = x;
+    } else {
+        y->parent->right = x;
+    }
+
+    if (y != node) {
+        node->key   = y->key;
+        node->value = y->value;
+    }
+
+    if (y->color == BLACK) {
+        rbtree_delete_fixup(&(t->root),t->nil,x);
+    }
+
+    return y;
+}
 
 void print_node(rbtree_node* node,rbtree_node* nil){
     if(node == nil)

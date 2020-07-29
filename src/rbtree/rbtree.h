@@ -43,9 +43,28 @@ void init_rbtree(rbtree** t);
 void insert_node(rbtree* t, KEY key, uint32_t value);
 
 /**
+ * @brief 删除节点
+ * 
+ * @param t 
+ * @param key 
+ * @return rbtree_node* 返回节点 
+ */
+rbtree_node* delete_node(rbtree* t, KEY key);
+
+/**
+ * @brief 查找Key对应的节点
+ * 
+ * @param t 
+ * @param key 
+ * @return rbtree_node* 
+ */
+rbtree_node* rbtree_search(rbtree* t,KEY key);
+
+/**
  * @brief 中序遍历打印
  * 
  * @param t 
  */
 void rbtree_print(rbtree* t);
+
 #endif //_H_RBTREE_H_
