@@ -184,6 +184,6 @@ int main(int argc, char *argv) {
     printf("send fd over! Will sleep 10s \n");
     close(recvfd);
     sleep(10);
-
+    unlink(path);
     exit(0);
 }

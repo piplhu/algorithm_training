@@ -76,5 +76,6 @@ int main() {
     printf("client write over!\n");
 
     close(recvfd);
+    unlink(path);
     exit(0);
 }
