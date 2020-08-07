@@ -117,13 +117,12 @@ template <typename T> void ThreadPool<T>::Run() {
             queue_locker_.Unlock();
             continue;
         }
-
         T *request = work_queue_.front();
         work_queue_.pop_front();
         queue_locker_.Unlock();
         if (!request) continue;
-
         request->process();
+        std::cout << "current thread id:" << pthread_self() << std::endl;
     }
 }
-#endif //_H_THREAD POOL_H_
+#endif //_H_THREAD POOL_H_      

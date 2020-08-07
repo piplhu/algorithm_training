@@ -1,15 +1,15 @@
 #include "http_conn.h"
 
-#include <sys/epoll.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
-#include <string.h>
-#include <stdlib.h>
+#include <fcntl.h>
 #include <iostream>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/epoll.h>
 #include <sys/mman.h>
 #include <sys/uio.h>
-#include <stdarg.h>
+#include <unistd.h>
 
 namespace {
 /* 定义http响应的一些状态信息 */
@@ -49,12 +49,11 @@ int setnonblocking(int fd) {
  * @param epollfd
  * @param fd
  */
-void addfd(int epollfd, int fd,bool one_shot) {
+void addfd(int epollfd, int fd, bool one_shot) {
     epoll_event event;
     event.data.fd = fd;
     event.events  = EPOLLIN | EPOLLET | EPOLLRDHUP;
-    if(one_shot)
-        event.events |= EPOLLONESHOT;
+    if (one_shot) event.events |= EPOLLONESHOT;
 
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
     setnonblocking(fd);
@@ -73,10 +72,10 @@ void removefd(int epollfd, int fd) {
 
 /**
  * @brief 更改fd注册epool参数
- * 
- * @param epollfd 
- * @param fd 
- * @param ev 
+ *
+ * @param epollfd
+ * @param fd
+ * @param ev
  */
 void modfd(int epollfd, int fd, int ev) {
     epoll_event event;
@@ -128,19 +127,18 @@ HttpConn::LINE_STATUS HttpConn::parse_line() {
     return LINE_OPEN;
 }
 
-bool HttpConn::read(){
-    if(read_index_ >= READ_BUFFER_SZIE)
-        return false;
-    
+bool HttpConn::read() {
+    if (read_index_ >= READ_BUFFER_SZIE) return false;
+
     int bytes_read = 0;
-    while(true){
-        bytes_read = recv(sockfd_,read_buf_+read_index_,READ_BUFFER_SZIE-read_index_,0);
-        if(bytes_read == -1){
-            if(errno == EAGAIN || errno == EWOULDBLOCK)
-                break;
-            
+    while (true) {
+        bytes_read = recv(sockfd_, read_buf_ + read_index_,
+                          READ_BUFFER_SZIE - read_index_, 0);
+        if (bytes_read == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+
             return false;
-        }else if(bytes_read == 0){
+        } else if (bytes_read == 0) {
             return false;
         }
 
@@ -149,42 +147,39 @@ bool HttpConn::read(){
     return true;
 }
 
-
-HttpConn::HTTP_CODE HttpConn::parse_request_line(char* text){
-    url_ = strpbrk(text,"\t");
-    if(!url_)
-        return BAD_REQUEST;
+HttpConn::HTTP_CODE HttpConn::parse_request_line(char *text) {
+    url_ = strpbrk(text, " ");
+    if (!url_) return BAD_REQUEST;
 
     *url_++ = '\0';
 
-    char* method = text;
-    if(strcasecmp(method,"GET") == 0){
+    char *method = text;
+    if (strcasecmp(method, "GET") == 0) {
         method_ = GET;
-    }else{
+    } else {
         return BAD_REQUEST;
     }
 
-    url_ += strspn(url_,"\t");
-    version_ = strpbrk(url_,"\t");
-    if(!version_)
-        return BAD_REQUEST;
+    url_ += strspn(url_, " ");
+    version_ = strpbrk(url_, " ");
+    if (!version_) return BAD_REQUEST;
 
     *version_++ = '\0';
-    version_+= strspn(version_,"\t");
-    if(strcasecmp(version_,"HTTP/1.1") != 0){
+    version_ += strspn(version_, " ");
+    if (strcasecmp(version_, "HTTP/1.1") != 0) {
         return BAD_REQUEST;
     }
 
-    if(strncasecmp(url_,"http://",7) == 0){
-        url_ +=7;
-        url_ = strchr(url_,'/');
+    if (strncasecmp(url_, "http://", 7) == 0) {
+        url_ += 7;
+        url_ = strchr(url_, '/');
     }
 
-    if(!url_ || url_[0] != '/'){
+    if (!url_ || url_[0] != '/') {
         return BAD_REQUEST;
     }
 
-    checked_index_ = CHECK_STATE_HEADR;
+    check_state_ = CHECK_STATE_HEADR;
     return NO_REQUEST;
 }
 
@@ -226,7 +221,7 @@ HttpConn::HTTP_CODE HttpConn::process_read() {
     LINE_STATUS line_status = LINE_OK;
     HTTP_CODE   ret         = NO_REQUEST;
     char *      text        = 0;
-    while (check_state_ == CHECK_STATE_CONTENT && line_status == LINE_OK ||
+    while ((check_state_ == CHECK_STATE_CONTENT && line_status == LINE_OK) ||
            ((line_status = parse_line()) == LINE_OK)) {
         text        = get_line();
         start_line_ = checked_index_;
@@ -305,6 +300,7 @@ void HttpConn::init() {
 }
 
 bool HttpConn::write() {
+    
     int temp            = 0;
     int bytes_have_send = 0;
     int bytes_to_send   = write_index_;
@@ -315,6 +311,7 @@ bool HttpConn::write() {
     }
     while (1) {
         temp = writev(sockfd_, iv_, iv_count_);
+        printf(".......response ...%d...\n",temp);
         if (temp <= -1) {
             if (errno == EAGAIN) {
                 modfd(epollfd_, sockfd_, EPOLLOUT);
@@ -330,8 +327,9 @@ bool HttpConn::write() {
             if (linger_) {
                 init();
                 modfd(epollfd_, sockfd_, EPOLLIN);
-                return false;
+                return true;
             } else {
+                init();
                 modfd(epollfd_, sockfd_, EPOLLIN);
                 return false;
             }

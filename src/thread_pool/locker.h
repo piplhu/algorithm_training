@@ -7,7 +7,7 @@
 
 /**
  * @brief 封装的信号量的类
- * 
+ *
  */
 class Sem {
   private:
@@ -35,7 +35,7 @@ class Sem {
 
 /**
  * @brief 互斥锁的封装
- * 
+ *
  */
 class Locker {
   private:

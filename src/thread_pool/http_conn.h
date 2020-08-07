@@ -4,9 +4,9 @@
  * @brief http请求处理,限仅支持GET/http1.1
  * @version 0.1
  * @date 2020-08-06
- * 
+ *
  * @copyright Copyright (c) 2020
- * 
+ *
  */
 
 #ifndef _H_HTTP_CONN_H_
@@ -98,7 +98,7 @@ class HttpConn {
     bool add_content_length(int content_length);
     bool add_linger();
     bool add_blank_line();
-    
+
   public:
     /* epool */
     static int epollfd_;
