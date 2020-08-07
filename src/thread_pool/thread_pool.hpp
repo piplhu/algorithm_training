@@ -4,9 +4,9 @@
  * @brief 半同步/半反应堆线程池
  * @version 0.1
  * @date 2020-07-20
- * 
+ *
  * @copyright Copyright (c) 2020
- * 
+ *
  */
 #ifndef _H_THREAD_POOL_H_
 #define _H_THREAD_POOL_H_
@@ -30,99 +30,98 @@ template <typename T> class ThreadPool {
   public:
     /**
      * @brief Construct a new Thread Pool object
-     * 
-     * @param threadNum 
-     * @param maxRequeue 
+     *
+     * @param threadNum
+     * @param maxRequeue
      */
     ThreadPool(int threadNum = 8, int maxRequeue = 10000);
     ~ThreadPool();
 
     /**
      * @brief 添加任务
-     * 
-     * @param request 
-     * @return true 
-     * @return false 
+     *
+     * @param request
+     * @return true
+     * @return false
      */
     bool Append(T *request);
 
-    private:
+  private:
     /**
      * @brief 工作线程运行的函数，不断从队列中取任务执行
-     * 
-     * @param arg 
+     *
+     * @param arg
      */
-    static void* Worker(void* arg);
-    void Run();
+    static void *Worker(void *arg);
+    void         Run();
 };
 
-template<typename T>
-ThreadPool<T>::ThreadPool(int threadNum,int maxRequeue):thread_num_(threadNum),max_request_(maxRequeue),stop_(false),threads(NULL){
-    if(threadNum <=0 || maxRequeue <=0){
+template <typename T>
+ThreadPool<T>::ThreadPool(int threadNum, int maxRequeue)
+    : thread_num_(threadNum)
+    , max_request_(maxRequeue)
+    , stop_(false)
+    , threads_(NULL) {
+    if (threadNum <= 0 || maxRequeue <= 0) {
         throw std::exception();
     }
 
     threads_ = new pthread_t[threadNum];
-    if(threads_){
+    if (!threads_) {
         throw std::exception();
     }
 
     //创建线程，并将它们都设置为脱离线程
-    for(int i = 0;i<threadNum;i++){
-        std::cout << "create the" << i <<"th thread" << std::endl;
-        if(pthread_create(threads_+i,NULL,Worker,this) != 0){
+    for (int i = 0; i < threadNum; i++) {
+        std::cout << "create the" << i << "th thread" << std::endl;
+        if (pthread_create(threads_ + i, NULL, Worker, this) != 0) {
             delete[] threads_;
             throw std::exception();
         }
-        if(pthread_detach(threads_[i])){
+        if (pthread_detach(threads_[i])) {
             delete[] threads_;
             throw std::exception();
         }
     }
 }
 
-template<typename T>
-ThreadPool<T>::~ThreadPool(){
+template <typename T> ThreadPool<T>::~ThreadPool() {
     delete[] threads_;
-    stop_ =true;
+    stop_ = true;
 }
 
-template <typename T>
-bool ThreadPool<T>::Append(T* request){
+template <typename T> bool ThreadPool<T>::Append(T *request) {
     queue_locker_.Lock();
-    if(work_queue_.size > max_request_){
+    if (work_queue_.size() > max_request_) {
         queue_locker_.Unlock();
         return false;
     }
 
     work_queue_.push_back(request);
     queue_locker_.Unlock();
-    queue_stat_.post();
+    queue_stat_.Post();
     return true;
 }
 
-template<typename T>
-void* ThreadPool<T>::Worker(void* arg){
-    ThreadPool* pool = (ThreadPool*)arg;
+template <typename T> void *ThreadPool<T>::Worker(void *arg) {
+    ThreadPool *pool = (ThreadPool *)arg;
     pool->Run();
-    return poll;
+    return pool;
 }
 
-template<typename T>
-void ThreadPool<T>::Run(){
-    while(!stop_){
+template <typename T> void ThreadPool<T>::Run() {
+    while (!stop_) {
         queue_stat_.Wait();
         queue_locker_.Lock();
-        if(work_queue_.empty()){
+        if (work_queue_.empty()) {
             queue_locker_.Unlock();
             continue;
         }
 
-        T* request = work_queue_.front();
+        T *request = work_queue_.front();
         work_queue_.pop_front();
         queue_locker_.Unlock();
-        if(!request)
-            continue;
+        if (!request) continue;
 
         request->process();
     }
