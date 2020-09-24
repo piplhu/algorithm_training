@@ -10,19 +10,19 @@ typedef struct _TreeNode {
 void DFS(char **strPath, int path[1000], int depth, int *size, TreeNode *node) {
   if (node == NULL)
     return;
-  path[depth] = node->val;
-  ++depth;
   if (node->left == NULL && node->right == NULL) { //遍历到最后的一个节点
     char *subPath = malloc(1000);
+    int len = 0;
     for (int i = 0; i < depth; i++) {
-      sprintf(subPath, "%s->%d", subPath, path[i]);
+      len += sprintf(subPath + len, "%d->", path[i]);
     }
-    strPath[*size] = subPath;
-    *size += 1;
-    return;
+    sprintf(subPath + len, "%d", node->val);
+    strPath[(*size)++] = subPath;
+  } else {
+    path[depth++] = node->val;
+    DFS(strPath, path, depth, size, node->left);
+    DFS(strPath, path, depth, size, node->right);
   }
-  DFS(strPath, path, depth, size, node->left);
-  DFS(strPath, path, depth, size, node->right);
 }
 
 /**
@@ -39,7 +39,7 @@ char **binaryTreePaths(TreeNode *root, int *returnSize) {
   int depth = 0;
   *returnSize = 0;
   DFS(strPath, path, depth, returnSize, root);
-  return path;
+  return strPath;
 }
 
 /**
@@ -112,10 +112,12 @@ int main() {
   TreeNode *root = CreateNode(50);
   CreateBinaryTree(root, 20);
   Print(root);
+  printf("\n");
   int size = 0;
   char **path = binaryTreePaths(root, &size);
   for (int i = 0; i < size; i++) {
     printf(path[i]);
+    printf("\n");
     free(path[i]);
   }
   free(path);
