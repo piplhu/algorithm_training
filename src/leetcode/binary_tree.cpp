@@ -77,19 +77,23 @@ void Print(TreeNode *root) {
 }
 
 /**
- * @brief 构建随机二叉树
+ * @brief 构建num个随机分布在0-max内的二叉树
  *
  * @param root
- * @param num：节点个数
+ * @param num
+ * @param max
  */
-void CreateBinaryTree(TreeNode *root , int num) {
+void CreateBinaryTree(TreeNode *root, int num, int max = 100) {
   for (int i = 0; i < num; i++) {
-    int val = rand() % 100;
+    int val = rand() % max;
     BinaryTreeAddNode(root, val);
   }
 }
 
 int main() {
+
+#if defined(SEARCH_ALL_PATH)
+  //遍历BST所用从跟节点出发的路径
   TreeNode *root = new TreeNode(50);
   CreateBinaryTree(root, 20);
   Print(root);
@@ -97,5 +101,10 @@ int main() {
   vector<string> path = binaryTreePaths(root);
   for (auto item : path)
     cout << item << endl;
+#elif defined(FIND_MODE)
+
+  //找出BST中出现频率最高的元素
+  cout << "100" << endl;
+#endif
   return 0;
 }
