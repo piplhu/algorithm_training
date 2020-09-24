@@ -11,26 +11,16 @@ struct TreeNode {
   TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
 };
 
-void DFS(vector<string> &strPath, vector<int> &nPath, int depth,
-         TreeNode *node) {
+void DFS(vector<string> &strPath, string subPath, TreeNode *node) {
   if (node == NULL)
     return;
+  subPath += std::to_string(node->val);
   if (node->left == NULL && node->right == NULL) { //遍历到最后的一个节点
-    string subPath;
-    for (int i = 0; i < depth; i++) {
-      subPath.append(std::to_string(nPath[i]));
-      subPath.append("->");
-    }
-    subPath.append(std::to_string(node->val));
     strPath.push_back(subPath);
   } else {
-    if (nPath.size() == depth) {
-      nPath.push_back(node->val);
-      depth++;
-    } else
-      nPath[depth++] = node->val;
-    DFS(strPath, nPath, depth, node->left);
-    DFS(strPath, nPath, depth, node->right);
+    subPath += "->";
+    DFS(strPath, subPath, node->left);
+    DFS(strPath, subPath, node->right);
   }
 }
 
@@ -44,8 +34,7 @@ void DFS(vector<string> &strPath, vector<int> &nPath, int depth,
  */
 vector<string> binaryTreePaths(TreeNode *root) {
   vector<string> strPath;
-  vector<int> path;
-  DFS(strPath, path, 0, root);
+  DFS(strPath, string(), root);
   return strPath;
 }
 
