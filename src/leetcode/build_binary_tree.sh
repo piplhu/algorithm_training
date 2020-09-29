@@ -29,3 +29,7 @@ build_arg="-g binary_tree.cpp -o binary_tree --std=c++11 ${define_arg}"
 echo "build arg :g++ ${build_arg}"
 
 g++ $build_arg
+
+echo "------->"
+
+./binary_tree
