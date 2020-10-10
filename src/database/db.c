@@ -222,8 +222,8 @@ static off_t _db_readidx(DB *db, off_t offset) {
   char *ptr1, *ptr2;
   char asciiptr[PTR_SZ + 1], ascillen[IDXLEN_SZ + 1];
   struct iovec iov[2];
-  if (db->idxoff =
-          lseek(db->idxfd, offset, offset == 0 ? SEEK_CUR : SEEK_SET) == -1)
+  if ((db->idxoff =
+          lseek(db->idxfd, offset, offset == 0 ? SEEK_CUR : SEEK_SET)) == -1)
     err_dump("_db_readidx: lseek error");
   
   iov[0].iov_base=asciiptr;
@@ -300,6 +300,11 @@ static void _db_dodelete(DB *db) {
   off_t freeptr, saveptr;
 
   for (ptr = db->datbuf, i = 0; i < db->datlen - 1; i++)
+    *ptr++ = SPACE;
+
+  *ptr = 0;
+  ptr = db->idxbuf;
+  while (*ptr)
     *ptr++ = SPACE;
 
   if (writew_lock(db->idxfd, FREE_OFF, SEEK_SET, 1) < 0)
