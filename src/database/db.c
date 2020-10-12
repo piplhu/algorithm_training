@@ -1,5 +1,4 @@
 #include "apue_db.h"
-//#include <cstddef>
 #include <errno.h>
 #include <fcntl.h> /* open & db_open flags */
 #include <stdarg.h>
@@ -16,14 +15,14 @@
 #define SPACE ' '   /*间隔符 */
 #define NEWLINE '\n' /* 换行符 */
 
-#define PTR_SZ 7
+#define PTR_SZ 7        /* 链偏移值占的字节长度 */
 #define PTR_MAX 999999 /* 最大的文件偏移 10**PTR-1*/
 #define NHASH_DEF 137  /* 散列表的大小137记录项 */
 #define FREE_OFF 0     /* 空闲链表在索引文件的偏移 */
 #define HASH_OFF PTR_SZ /* 哈希表在索引文件的偏移 */
 
 typedef unsigned long DBHASH; /* 哈希值 */
-typedef unsigned long COUNT;  /*  */
+typedef unsigned long COUNT;  
 
 /**
  * DB 操作的数据结构
@@ -31,18 +30,20 @@ typedef unsigned long COUNT;  /*  */
 typedef struct {
   int idxfd;    /* 索引文件fd */
   int datfd;    /* 数据文件fd */
-  char *idxbuf; /*  */
-  char *datbuf;
-  char *name;
-  off_t idxoff;
-  size_t idxlen;
-  off_t datoff;
-  size_t datlen;
-  off_t ptrval; /* 散列链表中下一个索引项的偏移值*/
-  off_t ptroff;
-  off_t chainoff;
-  off_t hashoff;
-  DBHASH nhash;
+  char *idxbuf; /* 索引键记录内容 */
+  char *datbuf;  /* 数据buf */
+  char *name;   /* db文件路径名 */
+  off_t idxoff; /* 当前索引的文件偏移 */
+  size_t idxlen; /* 索引记录的长度 */
+  off_t datoff; /* 当前数据在文件中的偏移 */
+  size_t datlen; /* 数据的长度 */
+  off_t ptrval; /* 链指针的值*/
+  off_t ptroff; /* 链指针在索引文件中的偏移 */
+  off_t chainoff; /* key对应的链在文件中的偏移 */
+  off_t hashoff; /* 哈希值在文件中的长度 */
+  DBHASH nhash; /* 哈希取余的值 */
+
+  /* 统计数据库不同操作成功和失败的次数 */
   COUNT cnt_delok;
   COUNT cnt_delerr;
   COUNT cnt_fetchok;
@@ -68,6 +69,14 @@ static void _db_writedat(DB *, const char *, off_t, int);
 static void _db_writeidx(DB *, const char *, off_t, int, off_t);
 static void _db_writeptr(DB *, off_t, off_t);
 
+/**
+ * @brief 打开一个数据库文件
+ * 
+ * @param pathname 不带后缀的文件名
+ * @param oflag 文件openmode
+ * @param ... 
+ * @return DBHANDLE 返回隐藏数据库结构细节的void*指针
+ */
 DBHANDLE db_open(const char *pathname, int oflag, ...) {
   DB *db;
   int len, mode;
@@ -75,6 +84,7 @@ DBHANDLE db_open(const char *pathname, int oflag, ...) {
   char asciiptr[PTR_SZ + 1], hash[(NHASH_DEF + 1) * PTR_SZ + 2];
   struct stat statbuf;
 
+  //求长度为数据库文件名分配足够的空间
   len = strlen(pathname);
   if ((db = _db_alloc(len)) == NULL)
     err_dump("db_open: _db_alloc error for DB");
@@ -108,6 +118,7 @@ DBHANDLE db_open(const char *pathname, int oflag, ...) {
     if (fstat(db->idxfd, &statbuf) < 0)
       err_sys("db_open: fstat error");
     if (statbuf.st_size == 0) {
+      //初始化散列表写入索引文件
       sprintf(asciiptr, "%*d", PTR_SZ, 0);
       hash[0] = 0;
       for (int i = 0; i < NHASH_DEF + 1; i++)
@@ -124,6 +135,12 @@ DBHANDLE db_open(const char *pathname, int oflag, ...) {
   return (db);
 }
 
+/**
+ * @brief 构造一个初始化过的DB结构体
+ * 
+ * @param namelen 文件名长度
+ * @return DB* 
+ */
 static DB *_db_alloc(int namelen) {
   DB *db;
   if ((db = calloc(1, sizeof(DB))) == NULL)
@@ -139,8 +156,18 @@ static DB *_db_alloc(int namelen) {
   return (db);
 }
 
+/**
+ * @brief 关闭数据库
+ * 
+ * @param h 
+ */
 void db_close(DBHANDLE h) { _db_free((DB *)h); }
 
+/**
+ * @brief 释放掉数据库结构分配的内存和资源
+ * 
+ * @param db 
+ */
 static void _db_free(DB *db) {
   if (db->idxfd >= 0)
     close(db->idxfd);
@@ -155,6 +182,13 @@ static void _db_free(DB *db) {
   free(db);
 }
 
+/**
+ * @brief 获取对应键值的数据
+ * 
+ * @param h 
+ * @param key 
+ * @return char* 
+ */
 char *db_fetch(DBHANDLE h, const char *key) {
   DB *db = h;
   char *ptr;
@@ -171,12 +205,22 @@ char *db_fetch(DBHANDLE h, const char *key) {
   return (ptr);
 }
 
+/**
+ * @brief 在索引文件中找到对应键的记录项信息
+ * 
+ * @param db 
+ * @param key 
+ * @param writelock 
+ * @return int 
+ */
 static int _db_find_and_lock(DB *db, const char *key, int writelock) {
   off_t offset, nextoffset;
 
+  //找到key对应的链的在文件文件中偏移
   db->chainoff = (_db_hash(db, key) * PTR_SZ) + db->hashoff;
   db->ptroff = db->chainoff;
 
+  //根据情况加读锁还是写锁
   if (writelock) {
     if (writew_lock(db->idxfd, db->chainoff, SEEK_SET, 1) < 0)
       err_dump("_db_find_and_lock: writew_lock error");
@@ -185,6 +229,7 @@ static int _db_find_and_lock(DB *db, const char *key, int writelock) {
       err_dump("_db_find_and_lock: readw_lock error");
   }
 
+  //找到链的第一条记录，对比key值找到记录，ptroff是前一条记录的文件偏移
   offset = _db_readptr(db, db->ptroff);
   while (offset != 0) {
     nextoffset = _db_readidx(db, offset);
@@ -197,6 +242,13 @@ static int _db_find_and_lock(DB *db, const char *key, int writelock) {
   return (offset == 0 ? -1 : 0);
 }
 
+/**
+ * @brief 计算key对应的hash值
+ * 
+ * @param db 
+ * @param key 
+ * @return DBHASH 
+ */
 static DBHASH _db_hash(DB *db, const char *key) {
   DBHASH hval = 0;
   char c;
@@ -207,6 +259,13 @@ static DBHASH _db_hash(DB *db, const char *key) {
   return (hval % db->nhash);
 }
 
+/**
+ * @brief 读取链索引记录的链表指针
+ * 
+ * @param db 
+ * @param offset 
+ * @return off_t 
+ */
 static off_t _db_readptr(DB *db, off_t offset) {
   char ascliptr[PTR_SZ + 1];
   if (lseek(db->idxfd, offset, SEEK_SET) == -1)
@@ -217,6 +276,13 @@ static off_t _db_readptr(DB *db, off_t offset) {
   return (atol(ascliptr));
 }
 
+/**
+ * @brief 通过偏移值读取索引记录并返回该链下一条记录在文件中的偏移
+ * 
+ * @param db 
+ * @param offset 
+ * @return off_t 
+ */
 static off_t _db_readidx(DB *db, off_t offset) {
   ssize_t i;
   char *ptr1, *ptr2;
@@ -226,6 +292,7 @@ static off_t _db_readidx(DB *db, off_t offset) {
           lseek(db->idxfd, offset, offset == 0 ? SEEK_CUR : SEEK_SET)) == -1)
     err_dump("_db_readidx: lseek error");
   
+  //读取索引记录
   iov[0].iov_base=asciiptr;
   iov[0].iov_len=PTR_SZ;
   iov[1].iov_base=ascillen;
@@ -264,9 +331,15 @@ static off_t _db_readidx(DB *db, off_t offset) {
     err_dump("_db_readidx: starting offset <0");
   if ((db->datlen = atol(ptr2)) <= 0 || db->datlen > DATALEN_MAX)
     err_dump("_db_readidx: invalid length");
-  return db->ptroff;
+  return db->ptrval;
 }
 
+/**
+ * @brief 读取数据
+ * 
+ * @param db 
+ * @return char* 
+ */
 static char *_db_readdat(DB *db) {
   if (lseek(db->datfd, db->datoff, SEEK_SET) == -1)
     err_dump("_db_readdat: lssek error");
@@ -278,6 +351,13 @@ static char *_db_readdat(DB *db) {
   return db->datbuf;
 }
 
+/**
+ * @brief 删除key对应的记录
+ * 
+ * @param h 
+ * @param key 
+ * @return int 
+ */
 int db_delete(DBHANDLE h, const char *key) {
   DB *db = h;
   int rc = 0;
@@ -298,7 +378,8 @@ static void _db_dodelete(DB *db) {
   int i;
   char *ptr;
   off_t freeptr, saveptr;
-
+  
+  //将记录的数据清空
   for (ptr = db->datbuf, i = 0; i < db->datlen - 1; i++)
     *ptr++ = SPACE;
 
@@ -312,23 +393,36 @@ static void _db_dodelete(DB *db) {
 
   _db_writedat(db, db->datbuf, db->datoff, SEEK_SET);
 
+  //读取现在空闲链的指针
   freeptr = _db_readptr(db, FREE_OFF);
 
   saveptr = db->ptrval;
 
+  //将当前空闲链指针写到要删除记录的下一条记录的偏移值
   _db_writeidx(db, db->idxbuf, db->idxoff, SEEK_SET, freeptr);
 
+  //将要删除的索引记录的偏移写到空闲散列链上做头
   _db_writeptr(db, FREE_OFF, db->idxoff);
 
+  //将要删除的记录的上一条记录与一条条记录连接起来
   _db_writeptr(db, db->ptroff, saveptr);
   if (un_lock(db->idxfd, FREE_OFF, SEEK_SET, 1) < 0)
     err_dump("_db_dodelete: un_lock error");
 }
 
+/**
+ * @brief 写入数据
+ * 
+ * @param db 
+ * @param data 
+ * @param offset 
+ * @param whence 
+ */
 static void _db_writedat(DB *db, const char *data, off_t offset, int whence) {
   struct iovec iov[2];
   static char newline = NEWLINE;
 
+  //如果是追加写锁住整个dat文件
   if (whence == SEEK_END)
     if (writew_lock(db->datfd, 0, SEEK_SET, 0) < 0)
       err_dump("_db_writedat: writew_lock error");
@@ -349,6 +443,15 @@ static void _db_writedat(DB *db, const char *data, off_t offset, int whence) {
       err_dump("_db_writedat: un_lock error");
 }
 
+/**
+ * @brief 写入索引记录
+ * 
+ * @param db 
+ * @param key 
+ * @param offset 
+ * @param whence 
+ * @param ptrval 
+ */
 static void _db_writeidx(DB *db, const char *key, off_t offset, int whence,
                          off_t ptrval) {
   struct iovec iov[2];
@@ -383,6 +486,13 @@ static void _db_writeidx(DB *db, const char *key, off_t offset, int whence,
       err_dump("_db_writeidx: un_lock error");
 }
 
+/**
+ * @brief 写链指针值
+ * 
+ * @param db 
+ * @param offset 
+ * @param ptrval 
+ */
 static void _db_writeptr(DB *db, off_t offset, off_t ptrval) {
   char asciiptr[PTR_SZ + 1];
   if (ptrval < 0 || ptrval > PTR_MAX)
@@ -411,6 +521,7 @@ int db_store(DBHANDLE h, const char *key, const char *data, int flag) {
     err_dump("db_store: invalid data length");
 
   if (_db_find_and_lock(db, key, 1) < 0) {
+    //没有找到记录，不能替换
     if (flag == DB_REPLACE) {
       rc = -1;
       db->cnt_storerr++;
@@ -420,6 +531,7 @@ int db_store(DBHANDLE h, const char *key, const char *data, int flag) {
 
     ptrval = _db_readptr(db, db->chainoff);
 
+    //从空闲链中找空间对等的已删除的数据，找到就重复利用已删除的记录的空间否则尾插
     if (_db_findfree(db, keylen, datlen) < 0) {
       _db_writedat(db, data, 0, SEEK_END);
       _db_writeidx(db, key, 0, SEEK_END, ptrval);
@@ -462,6 +574,14 @@ doreturn:
   return (rc);
 }
 
+/**
+ * @brief 从空闲链中找空间一致的删除的额记录
+ * 
+ * @param db 
+ * @param keylen 
+ * @param datlen 
+ * @return int 
+ */
 static int _db_findfree(DB *db, int keylen, int datlen) {
   int rc;
   off_t offset, nextoffset, saveoffset;
@@ -492,6 +612,7 @@ static int _db_findfree(DB *db, int keylen, int datlen) {
     err_dump("_db_findfree: un_lock error");
   return (rc);
 }
+
 
 void db_rewind(DBHANDLE h) {
   DB *db = h;
