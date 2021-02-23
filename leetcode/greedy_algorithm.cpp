@@ -76,6 +76,38 @@ int test122(vector<int>& prices){
   return res;
 }
 
+vector<vector<int>> test406(vector<vector<int>>& people){
+  std::vector<vector<int>> res;
+  std::sort(people.begin(), people.end(),
+            [](const vector<int> &a, const vector<int> &b) {
+              if (a[0] == b[0])
+                return a[1] < b[1];
+              else
+                return a[0] > b[0];
+            });
+  res.reserve(people.size());
+  for(auto item :people){
+      res.insert(res.begin()+item[1],item);
+  }
+  return res;
+}
+
+bool test665(vector<int> &nums) {
+  int num = 0;
+  for (int i = 1; i < nums.size(); i++) {
+      if (nums[i - 1] > nums[i]){
+        if (i == 1 || nums[i] >= nums[i - 2])
+          nums[i - 1] = nums[i];
+        else
+          nums[i] = nums[i - 1];
+        num++;
+      }
+    if (num > 1)
+      break;
+  }
+  return num < 2;
+}
+
 int main(int argc, char *argv[]) {
   vector<int> data({0, 1, 1, 0});
   std::cout << test605(data) << endl;
@@ -90,15 +122,20 @@ int main(int argc, char *argv[]) {
                              {0, 6},
                              {2, 8}});
   std::cout << test452(point) << endl;
-  string s ="ababcbacadefegdehijhklij";
+  string s = "ababcbacadefegdehijhklij";
   vector<int> res = test763(s);
   cout << "[";
-  for(int i : res)
-      cout << i <<",";
+  for (int i : res)
+    cout << i << ",";
   cout << "]" << endl;
 
-  vector<int> prices({7,1,5,3,6,4});
-  cout << test122(prices);
+  vector<int> prices({7, 1, 5, 3, 6, 4});
+  cout << test122(prices)<<endl;
 
+  vector<vector<int>> people({{7, 0}, {4, 4}, {7, 1}, {5, 0}, {6, 1}, {5, 2}});
+  people =  test406(people);
+
+  vector<int> nums({1,4,1,2});
+  cout << (test665(nums) ? "true" :"flase") <<endl;
   return 0;
 }
